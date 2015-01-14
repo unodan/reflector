@@ -27,7 +27,7 @@
 	done
 	
 	#
-	cd /home/httpd/scripts/import && sudo ./injector import -f $dst_domain
+	cd /home/httpd/scripts/injector && sudo ./injector import -f $dst_domain
 
 	[[ $? -ne 0 ]] && {
 		retval=1
