@@ -2,48 +2,48 @@
 #
 ################################################################################
 #
-#	Filename: reflector
+#       Filename: reflector
 #
-#	Author: Daniel Huckson
-#	Version 1.0 
+#       Author: Daniel Huckson
+#       Version 1.0
 #   Date: 2014/06/28
-#	Purpose: Mirror source site A to destination site B. 
+#       Purpose: Mirror source site A to destination site B.
 #
 ################################################################################
 #
 [[ -f $1 ]] && {
-	start_time=$(date +%s)
+        start_time=$(date +%s)
 
-	source $1
-	retval=0
-	
-	[ -f $tmp_file ] && rm -f $tmp_file
-	
-	echo "Mirroring of $src_domain to $dst_domain."  | tee -a $tmp_file
-	echo "----------------------------------------------------------------------"  | tee -a $tmp_file
-	
-	for index in ${!src_que[*]}; do
-	  sudo rsync -av --delete ${src_que[$index]} ${dst_que[$index]} 2>&1 | tee -a $tmp_file
-	done
-	
-	#
-	cd /home/httpd/scripts/injector && sudo ./injector import -f $dst_domain
+        source $1
+        retval=0
 
-	[[ $? -ne 0 ]] && {
-		retval=1
-		echo -e "\nMirroring of $src_domain to $dst_domain did not complete successfully." | tee -a $tmp_file
-	} 
-	
-	s=$[$(date +%s) - $start_time]; h=$[$s / 3600]; s=$[$s - $[$h * 3600]]; m=$[$s / 60]; s=$[$s - $[m * 60]]
-	[ "$h" != '0' ] && hours=" $h hours" || hours=""
-	[ "$m" != '0' ] && minutes=" $m minutes and" || minutes=""
+        [ -f $tmp_file ] && rm -f $tmp_file
 
-	echo -e "\nTotal mirroring time$hours$minutes $s seconds.\n\n" | tee -a $tmp_file
+        echo "Mirroring of $src_domain to $dst_domain."  | tee -a $tmp_file
+        echo "----------------------------------------------------------------------"  | tee -a $tmp_file
 
-	[[ $results -eq 0 ]] && state="Successful" || state="Failed"
-	(cat $tmp_file) | mailx -r "$email_from ($email_from_nice_name)" -s "'Mirroring of $src_domain to $dst_domain ($state!)' `date`" "$email_recipients"
-	[ -f "$tmp_file" ] && rm -f $tmp_file	
-} || { 
-	echo -e "\nCan't find the configutation file $1!\n" 
+        for index in ${!src_que[*]}; do
+          rsync -avzh --delete user@srv99.yourhost.com:${src_que[$index]} ${dst_que[$index]} 2>&1 | tee -a $tmp_file
+        done
+
+        #
+        cd $script_src/injector && ./injector -f configs/injector.cfg
+
+        [[ $? -ne 0 ]] && {
+                retval=1
+                echo -e "\nMirroring of $src_domain to $dst_domain did not complete successfully." | tee -a $tmp_file
+        }
+
+        s=$[$(date +%s) - $start_time]; h=$[$s / 3600]; s=$[$s - $[$h * 3600]]; m=$[$s / 60]; s=$[$s - $[m * 60]]
+        [ "$h" != '0' ] && hours=" $h hours" || hours=""
+        [ "$m" != '0' ] && minutes=" $m minutes and" || minutes=""
+
+        echo -e "\nTotal mirroring time$hours$minutes $s seconds.\n\n" | tee -a $tmp_file
+
+        [[ $results -eq 0 ]] && state="Successful" || state="Failed"
+        (cat $tmp_file) | mailx -r "$email_from ($email_from_nice_name)" -s "'Mirroring of $src_domain to $dst_domain ($state!)' `date`" "$email_recipients"
+        [ -f "$tmp_file" ] && rm -f $tmp_file
+} || {
+        echo -e "\nCan't find the configutation file $1!\n"
 }
 
