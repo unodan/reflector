@@ -12,13 +12,26 @@
 ################################################################################
 #
 [[ -f $1 ]] && {
-	KEY=$(cat ~/.ssh/id_rsa.pub) 
-	ssh $src_usr@$src_url "if [ -z \"\$(grep \"$KEY\" ~/.ssh/authorized_keys )\" ]; then echo $KEY >> ~/.ssh/authorized_keys; echo key added.; fi;"
+	retval=0
+	source $1
+
+	[ -f ~/.ssh/id_rsa.pub ] || {
+		clear
+		echo -e "\n\n"
+		echo -e "*******************************************************************"
+		echo -e "\n  *** NOTICE *** Creating private and public, "
+		echo -e " encryption keys. Please enter required information to continue.\n"
+		echo -e "*******************************************************************"
+
+		echo -e "\n\n\n" | ssh-keygen -t rsa -N ""  > /dev/null 2>&1
+
+		ssh-copy-id -i ~/.ssh/id_rsa.pub $src_usr@$src_url
+
+		echo -e "\n"
+		echo -e "*******************************************************************\n\n\n"
+	}
 
 	start_time=$(date +%s)
-
-	source $1
-	retval=0
 
 	[ -f $tmp_file ] && rm -f $tmp_file
 
@@ -29,7 +42,6 @@
 		rsync -avzh --delete $src_usr@$src_url:${src_que[$index]} ${dst_que[$index]} 2>&1 | tee -a $tmp_file
 	done
 
-	#
 	cd $script_src/injector && ./injector -f configs/injector.cfg
 
 	[[ $? -ne 0 ]] && {
@@ -46,8 +58,8 @@
 	[[ $results -eq 0 ]] && state="Successful" || state="Failed"
 	(cat $tmp_file) | mailx -r "$email_from ($email_from_nice_name)" -s "'Mirroring of $src_domain to $dst_domain ($state!)' `date`" "$email_recipients"
 	[ -f "$tmp_file" ] && rm -f $tmp_file
-
 } || {
-	echo -e "\nCan't find the configutation file $1!\n"
+        echo -e "\nCan't find the configutation file $1!\n"
 }
+
 
