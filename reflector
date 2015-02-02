@@ -12,38 +12,42 @@
 ################################################################################
 #
 [[ -f $1 ]] && {
-        start_time=$(date +%s)
+	KEY=$(cat ~/.ssh/id_rsa.pub) 
+	ssh $src_usr@$src_url "if [ -z \"\$(grep \"$KEY\" ~/.ssh/authorized_keys )\" ]; then echo $KEY >> ~/.ssh/authorized_keys; echo key added.; fi;"
 
-        source $1
-        retval=0
+	start_time=$(date +%s)
 
-        [ -f $tmp_file ] && rm -f $tmp_file
+	source $1
+	retval=0
 
-        echo "Mirroring of $src_domain to $dst_domain."  | tee -a $tmp_file
-        echo "----------------------------------------------------------------------"  | tee -a $tmp_file
+	[ -f $tmp_file ] && rm -f $tmp_file
 
-        for index in ${!src_que[*]}; do
-          rsync -avzh --delete user@srv99.yourhost.com:${src_que[$index]} ${dst_que[$index]} 2>&1 | tee -a $tmp_file
-        done
+	echo "Mirroring of $src_domain to $dst_domain."  | tee -a $tmp_file
+	echo "----------------------------------------------------------------------"  | tee -a $tmp_file
 
-        #
-        cd $script_src/injector && ./injector -f configs/injector.cfg
+	for index in ${!src_que[*]}; do
+		rsync -avzh --delete $src_usr@$src_url:${src_que[$index]} ${dst_que[$index]} 2>&1 | tee -a $tmp_file
+	done
 
-        [[ $? -ne 0 ]] && {
-                retval=1
-                echo -e "\nMirroring of $src_domain to $dst_domain did not complete successfully." | tee -a $tmp_file
-        }
+	#
+	cd $script_src/injector && ./injector -f configs/injector.cfg
 
-        s=$[$(date +%s) - $start_time]; h=$[$s / 3600]; s=$[$s - $[$h * 3600]]; m=$[$s / 60]; s=$[$s - $[m * 60]]
-        [ "$h" != '0' ] && hours=" $h hours" || hours=""
-        [ "$m" != '0' ] && minutes=" $m minutes and" || minutes=""
+	[[ $? -ne 0 ]] && {
+		retval=1
+		echo -e "\nMirroring of $src_domain to $dst_domain did not complete successfully." | tee -a $tmp_file
+	}
 
-        echo -e "\nTotal mirroring time$hours$minutes $s seconds.\n\n" | tee -a $tmp_file
+	s=$[$(date +%s) - $start_time]; h=$[$s / 3600]; s=$[$s - $[$h * 3600]]; m=$[$s / 60]; s=$[$s - $[m * 60]]
+	[ "$h" != '0' ] && hours=" $h hours" || hours=""
+	[ "$m" != '0' ] && minutes=" $m minutes and" || minutes=""
 
-        [[ $results -eq 0 ]] && state="Successful" || state="Failed"
-        (cat $tmp_file) | mailx -r "$email_from ($email_from_nice_name)" -s "'Mirroring of $src_domain to $dst_domain ($state!)' `date`" "$email_recipients"
-        [ -f "$tmp_file" ] && rm -f $tmp_file
+	echo -e "\nTotal mirroring time$hours$minutes $s seconds.\n\n" | tee -a $tmp_file
+
+	[[ $results -eq 0 ]] && state="Successful" || state="Failed"
+	(cat $tmp_file) | mailx -r "$email_from ($email_from_nice_name)" -s "'Mirroring of $src_domain to $dst_domain ($state!)' `date`" "$email_recipients"
+	[ -f "$tmp_file" ] && rm -f $tmp_file
+
 } || {
-        echo -e "\nCan't find the configutation file $1!\n"
+	echo -e "\nCan't find the configutation file $1!\n"
 }
 
